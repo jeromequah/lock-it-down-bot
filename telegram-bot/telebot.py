@@ -8,7 +8,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-my_token = '1021081111:AAEe7HbsD4tRE9RrndctArLggjH1Z-6IPiU'
+my_token = 'insert token here'
 
 # Flow of Conversation
 MATRIC_VALIDITY, FILTER_LOCATION, FILTER_SIZE, AVAIL_LOCKER, BOOKING_CONFIRMED = range(5) 
