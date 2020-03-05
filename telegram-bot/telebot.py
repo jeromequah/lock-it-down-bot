@@ -1,7 +1,10 @@
 import logging # to inform when and why things don't work as expected
 
-from telegram import ReplyKeyboardMarkup 
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler, Filters
+
+import string
+import re
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -28,6 +31,10 @@ def start(update, context):
 
     return MATRIC_VALIDITY
 
+def integer_validity(text):
+    regex = re.compile('[@_!#$%^&*()<>?/\|}{~:]') 
+    if text.isdigit():
+        return True
 
 # Check for validity of Matriculation Number (8 characters)
 def matric_validity(update, context):
@@ -35,15 +42,15 @@ def matric_validity(update, context):
     matric_id = update.message.text
     user_info['matric id'] = matric_id
 
-    if len(str(matric_id)) == 8:
+    if len(str(matric_id)) == 8 and integer_validity(matric_id) == True: #matric id must be an integer of length 8 and must start with '01xxxxxx'
         reply_keyboard = [['YES']]
         update.message.reply_text("Alright! Select 'YES' to start your booking. \n \n"
                                   "Note: You may type /cancel at any time to terminate your session.", reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
         return FILTER_LOCATION 
 
-    # else:
-    #     print('exception case needed') # (!) Need to code exception case      
+    else:
+        update.message.reply_text('You have not entered a valid input! \nPlease try again!')
 
 
 # Select Filter Location 
@@ -95,7 +102,7 @@ def booking_confirmed(update, context):
 def cancel(update, context): 
     user = update.message.from_user
     logger.info("User %s canceled the conversation.", user.first_name)
-    update.message.reply_text("Your session has been terminated. Please type /start to begin a new one.")
+    update.message.reply_text("Your session has been terminated. Please type /start to begin a new one.", reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
