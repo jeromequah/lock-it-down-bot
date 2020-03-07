@@ -9,7 +9,6 @@ locker_info = [{'locker name': 'SIS-L1-01', 'location': 'SIS', 'locker size': 'S
 
 @app.route('/search/', methods=['GET']) 
 
-
 def get_available_lockers():
     location = request.args.get('location')
     size = request.args.get('locker size')
