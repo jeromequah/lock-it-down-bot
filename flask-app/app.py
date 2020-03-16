@@ -75,7 +75,15 @@ def search_locker():
     else:
         searches = Locker.query.all()
         return jsonify([l.serialize() for l in searches])
-        
+
+
+@app.route('/updateBooking/<int:bookingID>', methods=['PUT'])
+def update_booking(bookingID):
+    booking = Booking.query.get(bookingID)
+    booking.timeout = datetime.datetime.now()
+    db.session.commit()
+    return jsonify(booking.serialize())
+    
 # your code ends here 
 
 if __name__ == '__main__':
