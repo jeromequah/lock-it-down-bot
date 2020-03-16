@@ -52,6 +52,15 @@ def create_booking():
     except Exception as e:
         return (str(e))
 
+@app.route('/getBooking/', methods= ['GET'])
+def get_booking():
+	print('get_booking')
+	
+	if 'bookingID' in request.json:
+		id = int(request.json['bookingID'])
+		booking = Booking.query.filter_by(bookingID= id).first()
+		return jsonify(booking.serialize())
+        
 # your code ends here 
 
 if __name__ == '__main__':
