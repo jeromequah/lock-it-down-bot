@@ -60,6 +60,21 @@ def get_booking():
 		id = int(request.json['bookingID'])
 		booking = Booking.query.filter_by(bookingID= id).first()
 		return jsonify(booking.serialize())
+
+@app.route('/getLocker/', methods=['GET'])
+def search_locker():
+    print('search_locker')
+
+    if 'lockerSchool' in request.json and 'lockerSize' in request.json:
+        lockerSchool = str(request.json['lockerSchool'])
+        lockerSize = str(request.json['lockerSize'])
+        search = Locker.query.filter_by(lockerSchool = lockerSchool,lockerSize = lockerSize).first()
+        #.all() returns a list, cannot serialise
+        return jsonify(search.serialize())
+
+    else:
+        searches = Locker.query.all()
+        return jsonify([l.serialize() for l in searches])
         
 # your code ends here 
 
