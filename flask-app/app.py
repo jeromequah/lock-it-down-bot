@@ -83,6 +83,14 @@ def update_booking(bookingID):
     booking.timeout = datetime.datetime.now()
     db.session.commit()
     return jsonify(booking.serialize())
+
+@app.route('/updateLocker/<lockerName>', methods=['PUT'])
+def update_locker(lockerName):
+    new_lockerAvailability = request.json['lockerAvailability']
+    locker = Locker.query.get(lockerName)
+    locker.lockerAvailability = new_lockerAvailability
+    db.session.commit()
+    return jsonify(locker.serialize())
     
 # your code ends here 
 
