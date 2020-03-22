@@ -42,8 +42,8 @@ class Booking(db.Model):
             'booking id': self.bookingID, 
             'matric': self.matric, 
             'locker name': self.lockerName, 
-            'time in': self.timein, 
-            'time out': self.timeout}
+            'time in': self.timein
+            }
 
 class Locker(db.Model):
     __tablename__ = 'locker'

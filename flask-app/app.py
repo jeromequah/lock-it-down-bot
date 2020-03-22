@@ -28,6 +28,7 @@ def create_locker():
 
     try:
         new_locker = Locker(lockerName=locker_name, lockerSize=locker_size, lockerSchool= locker_school, lockerLevel=locker_level, lockerAvailability = locker_availability)
+        db.session.add(new_locker)
         db.session.commit()
         return jsonify('{} was created'.format(new_locker))
 
@@ -39,7 +40,6 @@ def create_booking():
     print('create_booking')
     matric = request.json['matric']
     locker_name = request.json['lockerName']
-
     try:
         new_student = Student(matric=matric)
         db.session.add(new_student)
@@ -54,27 +54,53 @@ def create_booking():
 
 @app.route('/getBooking/', methods= ['GET'])
 def get_booking():
-	print('get_booking')
-	
-	if 'bookingID' in request.json:
-		id = int(request.json['bookingID'])
-		booking = Booking.query.filter_by(bookingID= id).first()
-		return jsonify(booking.serialize())
+    print('get_booking')
+    
+    #get Query Params of bookingID from URL
+    if 'bookingID' in request.args:
+        try:
+            bookingID = int(request.args.get('bookingID'))
+        except:
+            return ('Please key in integers.')#error handle for non-digits
+        booking = Booking.query.filter_by(bookingID = bookingID).first_or_404(description = 'BookingID {} not found. Please key in a valid bookingID.'.format(bookingID))
+        #if booking not found, return 404 followed by comment 
+        return jsonify(booking.serialize())
+    else:
+        booking = Booking.query.all()
+        return jsonify([b.serialize() for b in booking])
 
 @app.route('/getLocker/', methods=['GET'])
-def search_locker():
-    print('search_locker')
+def get_locker():
+    print('get_locker')
 
-    if 'lockerSchool' in request.json and 'lockerSize' in request.json:
-        lockerSchool = str(request.json['lockerSchool'])
-        lockerSize = str(request.json['lockerSize'])
-        search = Locker.query.filter_by(lockerSchool = lockerSchool,lockerSize = lockerSize).first()
-        #.all() returns a list, cannot serialise
-        return jsonify(search.serialize())
+    '''Update 22/3/2020: 
+    ---------------------
+    * If Query Both School & Size, Only School will be taken
+    '''
 
-    else:
-        searches = Locker.query.all()
-        return jsonify([l.serialize() for l in searches])
+    #get Query Params of lockerSchool from URL
+    if 'lockerSchool' in request.args: #if lockerSchool present in URL
+        lockerSchool = str(request.args.get('lockerSchool'))
+    
+        if lockerSchool not in ('SIS','SOL','SOE','SOB','SOA'):
+            return 'error_code: 404\n booking_error: {} is an invalid school.Please enter a valid school.'.format(lockerSchool)
+        
+        getLocker = Locker.query.filter_by(lockerSchool = lockerSchool).all()
+        return jsonify([g.serialize() for g in getLocker])
+        
+   #if no lockerSchool Query, get using lockerSize Query
+    elif 'lockerSize' in request.args: #if lockerSize present in URL
+        lockerSize = str(request.args.get('lockerSize'))
+
+        if lockerSize not in ('S','M','L'):
+            return 'error_code: 404\n booking_error: {} is an invalid size.Please enter a valid lockersize.'.format(lockerSize)
+
+        getLocker = Locker.query.filter_by(lockerSize = lockerSize).all()
+        return jsonify([g.serialize() for g in getLocker])
+
+    else: #if no params provided in URL
+        getLocker = Locker.query.all()
+        return jsonify([g.serialize() for g in getLocker])
 
 
 @app.route('/updateBooking/<int:bookingID>', methods=['PUT'])
@@ -95,4 +121,4 @@ def update_locker(lockerName):
 # your code ends here 
 
 if __name__ == '__main__':
-	app.run(debug=True)
+    app.run(debug=True)
