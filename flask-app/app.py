@@ -37,37 +37,51 @@ def create_locker():
 
 @app.route('/postBooking/', methods=['POST'])
 def create_booking():
-    print('create_booking')
-    matric = request.json['matric']
-    locker_name = request.json['lockerName']
-    try:
-        new_student = Student(matric=matric)
-        db.session.add(new_student)
-        db.session.commit() 
-        new_booking = Booking(matric=matric, lockerName=locker_name)
-        db.session.add(new_booking)
-        db.session.commit()
-        return jsonify('{} was created'.format(new_booking))
+	print('create_booking')
+	matric = request.json['matric']
+	lockerName = request.json['lockerName']
 
-    except Exception as e:
-        return (str(e))
+	try:
+		locker = Locker.query.filter_by(lockerName=lockerName).first()
+
+		if not(type(matric) == str) or len(str(matric)) != 8:
+			error = {"error code": 404, "booking error": "Please key in a valid matriculation card ID"}
+			return(jsonify(error))
+		elif not(type(lockerName) == str) or locker is None:
+			error = {"error code": 404, "booking error": "Please key in a valid locker name"}
+			return(jsonify(error))
+
+		student = Student.query.filter_by(matric=matric).first()
+		
+		if student is None:
+			new_student = Student(matric=matric)
+			db.session.add(new_student)
+			db.session.commit() 
+			new_booking = Booking(matric=matric, lockerName=lockerName)
+			db.session.add(new_booking)
+			db.session.commit()
+			return jsonify('{} was created'.format(new_booking))
+		else:
+			new_booking = Booking(matric=matric, lockerName=lockerName)
+			db.session.add(new_booking)
+			db.session.commit()
+			return jsonify('{} was created'.format(new_booking))
+
+	except Exception as e:
+		return (str(e))
 
 @app.route('/getBooking/', methods= ['GET'])
 def get_booking():
-    print('get_booking')
-    
-    #get Query Params of bookingID from URL
-    if 'bookingID' in request.args:
-        try:
-            bookingID = int(request.args.get('bookingID'))
-        except:
-            return ('Please key in integers.')#error handle for non-digits
-        booking = Booking.query.filter_by(bookingID = bookingID).first_or_404(description = 'BookingID {} not found. Please key in a valid bookingID.'.format(bookingID))
-        #if booking not found, return 404 followed by comment 
-        return jsonify(booking.serialize())
-    else:
-        booking = Booking.query.all()
-        return jsonify([b.serialize() for b in booking])
+	print('get_booking')
+	
+	try:
+		if 'bookingID' in request.args:
+			id = int(request.args.get('bookingID'))
+			booking = Booking.query.filter_by(bookingID= id).first()
+			return jsonify(booking.serialize())
+	except:
+		error = {"error code": 404, "booking error": "Please key in a valid booking ID"}
+		return(jsonify(error))
 
 @app.route('/getLocker/', methods=['GET'])
 def get_locker():
