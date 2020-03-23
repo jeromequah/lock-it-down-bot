@@ -1,6 +1,8 @@
 # Step 01: import necessary libraries/modules
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import and_
+import datetime
 
 # your code begins here 
 
@@ -9,7 +11,7 @@ app = Flask(__name__)
 app.debug = True
 
 # Step 03: add database configurations here
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://projectuser:password@localhost:5432/projectdb" 
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://broskiuser:password@localhost:5432/broskidb" 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -17,147 +19,191 @@ db = SQLAlchemy(app)
 from models import Student, Booking, Locker
 
 # Step 05: add routes and their binded functions here
+valid_Schools = ['SIS', 'SOB', 'SOA','SOL','SOE']
+valid_Sizes = ['S', 'M', 'L'] 
+valid_Levels = ['2','3']
+valid_Numbers = [str(i) for i in range(1,51)]
+
+
 @app.route('/postLocker/', methods=['POST'])
-def create_locker():
-    print('create_locker')
-    locker_name = request.json['lockerName']
-    locker_size = request.json['lockerSize']
-    locker_school = request.json['lockerSchool']
-    locker_level = request.json['lockerLevel']
-    locker_availability = 'Yes'
+def postLocker():
+	lockerSize = request.json['lockerSize']
+	lockerSchool = request.json['lockerSchool']
+	lockerLevel = request.json['lockerLevel']
+	lockerNumber = request.json['lockerNumber']
+	lockerAvailability = 'Yes'
+	errors = {}
 
-    try:
-        new_locker = Locker(lockerName=locker_name, lockerSize=locker_size, lockerSchool= locker_school, lockerLevel=locker_level, lockerAvailability = locker_availability)
-        db.session.add(new_locker)
-        db.session.commit()
-        return jsonify('{} was created'.format(new_locker))
+	try:
+		if lockerSchool.upper() not in valid_Schools:   
+			errors['School Error'] = '{} is an invalid school. Please enter a valid school.'.format(lockerSchool)
+			
+		if (lockerLevel.isdigit() == False) or (lockerLevel not in valid_Levels):        
+			errors['Level Error'] = '{} is an invalid level. Please enter a valid level.'.format(lockerLevel)
+		
+		if lockerSize not in valid_Sizes:
+			errors['Size Error'] = '{} is an invalid size. Please enter a valid size.'.format(lockerSize)
 
-    except Exception as e:
-        return (str(e))
+		if (lockerNumber.isdigit() == False) or (lockerNumber not in valid_Numbers):
+			errors['Number Error'] = '{} is an invalid locker number. Please enter a valid locker number between 1 to 50.'.format(lockerNumber)
+
+		if len(errors) >= 1:
+			return jsonify(errors)
+	
+		else:
+			lockerName = lockerSchool + '-' + 'L' + lockerLevel + '-' + lockerNumber		
+			new_locker = Locker(lockerName=lockerName, lockerSize=lockerSize, lockerSchool= lockerSchool, lockerLevel=lockerLevel, lockerNumber = lockerNumber, lockerAvailability = lockerAvailability)
+			db.session.add(new_locker)
+			db.session.commit()
+			print("Your booking details have been posted successfully.")
+			return jsonify('{} was created'.format(new_locker))
+	
+	except Exception as e:
+		return (str(e))
 
 @app.route('/postBooking/', methods=['POST'])
-def create_booking():
-	print('create_booking')
+def postBooking():
 	matric = request.json['matric']
 	lockerName = request.json['lockerName']
+	errors = {}
 
 	try:
 		locker = Locker.query.filter_by(lockerName=lockerName).first()
 
-		if not(type(matric) == str) or len(str(matric)) != 8:
-			error = {"error code": 404, "booking error": "Please key in a valid matriculation card ID"}
-			return(jsonify(error))
-		elif not(type(lockerName) == str) or locker is None:
-			error = {"error code": 404, "booking error": "Please key in a valid locker name"}
-			return(jsonify(error))
+		if (matric.isdigit() == False) or len(str(matric)) != 8:
+			errors['Matric Error'] = '{} is an invalid matric ID. Please enter a valid matric ID.'.format(matric)
+			
+		if not(type(lockerName) == str) or locker is None:
+			errors['Locker Error'] = '{} does not exist. Please try again.'.format(lockerName)
 
-		student = Student.query.filter_by(matric=matric).first()
-		
-		if student is None:
-			new_student = Student(matric=matric)
-			db.session.add(new_student)
-			db.session.commit() 
-			new_booking = Booking(matric=matric, lockerName=lockerName)
-			db.session.add(new_booking)
-			db.session.commit()
-			return jsonify('{} was created'.format(new_booking))
+		if len(errors) >= 1:
+			return jsonify(errors)
+
 		else:
-			new_booking = Booking(matric=matric, lockerName=lockerName)
-			db.session.add(new_booking)
-			db.session.commit()
-			return jsonify('{} was created'.format(new_booking))
+			student = Student.query.filter_by(matric=matric).first()
+			if student is None:
+				new_student = Student(matric=matric)
+				db.session.add(new_student)
+				db.session.commit() 
+				new_booking = Booking(matric=matric, lockerName=lockerName)
+				db.session.add(new_booking)
+				db.session.commit()
+				return jsonify('{} was created'.format(new_booking))
+			else:
+				new_booking = Booking(matric=matric, lockerName=lockerName)
+				db.session.add(new_booking)
+				db.session.commit()
+				return jsonify('{} was created'.format(new_booking))
 
 	except Exception as e:
 		return (str(e))
 
 @app.route('/getBooking/', methods= ['GET'])
-def get_booking():
-	print('get_booking')
-	
+def getBooking():
+	errors = {}
 	try:
 		if 'bookingID' in request.args:
-			id = int(request.args.get('bookingID'))
-			booking = Booking.query.filter_by(bookingID= id).first()
-			return jsonify(booking.serialize())
-	except:
-		error = {"error code": 404, "booking error": "Please key in a valid booking ID"}
-		return(jsonify(error))
+			if request.args.get('bookingID').isdigit() == False:
+				errors['BookingID Error'] = '{} is an invalid Booking ID. Please enter a valid booking ID.'.format(request.args.get('bookingID'))
+				return jsonify(errors)
+			else:
+				id = int(request.args.get('bookingID'))
+				booking = Booking.query.filter_by(bookingID=id).first()
+				if booking == None:
+					errors['BookingID Error'] = 'Booking ID {} does not exist. Please try again.'.format(id)
+					return jsonify(errors)
+				else:
+					return jsonify(booking.serialize())
+	except Exception as e:
+		return (str(e))
 
 @app.route('/getLocker/', methods=['GET'])
-def get_locker():
-    print('get_locker')
+def getLocker():
 
-    '''Update 22/3/2020: 
-    ---------------------
-    * If Query Both School & Size, Only School will be taken
-    '''
+	errors = {}
 
-    #get Query Params of lockerSchool from URL
-    if 'lockerSchool' in request.args: #if lockerSchool present in URL
-        lockerSchool = str(request.args.get('lockerSchool'))
-    
-        if lockerSchool not in ('SIS','SOL','SOE','SOB','SOA'):
-            return 'error_code: 404\n booking_error: {} is an invalid school.Please enter a valid school.'.format(lockerSchool)
-        
-        getLocker = Locker.query.filter_by(lockerSchool = lockerSchool).all()
-        return jsonify([g.serialize() for g in getLocker])
-        
-   #if no lockerSchool Query, get using lockerSize Query
-    elif 'lockerSize' in request.args: #if lockerSize present in URL
-        lockerSize = str(request.args.get('lockerSize'))
+	try:
+		if 'lockerSchool' in request.args and 'lockerSize' in request.args: 
+			lockerSchool = str(request.args.get('lockerSchool'))
+			lockerSize = str(request.args.get('lockerSize'))
+			if lockerSchool.upper() not in valid_Schools:   
+				errors['School Error'] = '{} is an invalid school. Please enter a valid school.'.format(lockerSchool)
+			
+			if lockerSize not in valid_Sizes:
+				errors['Size Error'] = '{} is an invalid size. Please enter a valid size.'.format(lockerSize)
 
-        if lockerSize not in ('S','M','L'):
-            return 'error_code: 404\n booking_error: {} is an invalid size.Please enter a valid lockersize.'.format(lockerSize)
+			if len(errors) >= 1:
+				return jsonify(errors)
+				
+			else: 
+				getLocker = Locker.query.filter(and_(Locker.lockerSchool == lockerSchool, Locker.lockerSize == lockerSize))
+				return jsonify([g.serialize() for g in getLocker])
 
-        getLocker = Locker.query.filter_by(lockerSize = lockerSize).all()
-        return jsonify([g.serialize() for g in getLocker])
+		elif 'lockerSchool' in request.args:
+			lockerSchool = str(request.args.get('lockerSchool'))
+			if lockerSchool.upper() not in valid_Schools:   
+				errors['School Error'] = '{} is an invalid school. Please enter a valid school.'.format(lockerSchool)
+				return jsonify(errors)
+			
+			else:
+				getLocker = Locker.query.filter(Locker.lockerSchool == lockerSchool).all()
+				return jsonify([g.serialize() for g in getLocker])
 
-    else: #if no params provided in URL
-        getLocker = Locker.query.all()
-        return jsonify([g.serialize() for g in getLocker])
-
-
+		elif 'lockerSize' in request.args:
+			lockerSize = str(request.args.get('lockerSize'))
+			if lockerSize not in valid_Sizes:
+				errors['Size Error'] = '{} is an invalid size. Please enter a valid size.'.format(lockerSize)
+				return jsonify(errors)
+			else:
+				getLocker = Locker.query.filter(Locker.lockerSize == lockerSize).all()
+				return jsonify([g.serialize() for g in getLocker])
+		else:
+			getLocker = Locker.query.all()
+			return jsonify([g.serialize() for g in getLocker])
+		
+	except Exception as e:
+		return (str(e))
+	 
 @app.route('/updateBooking/<int:bookingID>', methods=['PUT'])
-def update_booking(bookingID):
-    print('update_booking')
-    booking = Booking.query.get(bookingID)
-
-    # check if the booking ID is in DB
-    booking = Booking.query.filter_by(bookingID=bookingID).first()
-    if booking is None:
-        return ('Booking ID {} does not exist'.format(bookingID))
-
-    else:
-        booking.timeout = datetime.datetime.now()
-        db.session.commit()
-        print('Your booking details have been updated successfully.')
-        return jsonify(booking.serialize())
+def updateBooking(bookingID):
+	booking = Booking.query.get(bookingID)
+	errors = {}
+	if booking is None:
+		errors['BookingID Error'] = 'Booking ID {} does not exist. Please try again.'.format(bookingID)
+		return jsonify(errors)
+	
+	else:
+		booking = Booking.query.filter_by(bookingID=bookingID).first()
+		booking.timeout = datetime.datetime.now() 
+		db.session.commit()
+		print('Your booking details have been updated successfully.')
+		return jsonify(booking.serialize())
 
 @app.route('/updateLocker/<lockerName>', methods=['PUT'])
-def update_locker(lockerName):
-    print(update_locker)
-    new_lockerAvailability = request.json['lockerAvailability']
-    locker = Locker.query.get(lockerName)
+def updateLocker(lockerName):
+	errors = {}
+	new_lockerAvailability = request.json['lockerAvailability']
+	locker = Locker.query.get(lockerName)
 
-    errors = {}
-    try:
-        if (new_lockerAvailability != "Yes") or (new_lockerAvailability != "No"):
-            errors['Availability Error']= "Please key in a valid availability string 'Yes' or 'No'"
-        
-        #name error - 
+	try:
+		locker = Locker.query.filter_by(lockerName=lockerName).first()
 
-        else:
-            locker.lockerAvailability = new_lockerAvailability
-            db.session.commit()
-            print("Your locker details have been updated successfully.")
-            return jsonify(locker.serialize())
-        
-        return errors
+		if not(type(lockerName) == str) or locker is None:
+				errors['Locker Error'] = '{} does not exist. Please try again.'.format(lockerName)
+				return jsonify(errors)
 
-    except Exception as e:
-		return (str(e))	
+		elif (new_lockerAvailability != "Yes") and (new_lockerAvailability != "No"):
+			errors['Availability Error'] = "Please key in a valid availability string 'Yes' or 'No'"
+			return jsonify(errors)
 
-# your code ends here 
+		else:
+			locker.lockerAvailability = new_lockerAvailability
+			db.session.commit()
+			print("Your locker details have been updated successfully.")
+			return jsonify(locker.serialize())
+
+	except Exception as e:
+		return (str(e))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+	app.run(debug=True)
