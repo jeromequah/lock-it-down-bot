@@ -105,19 +105,44 @@ def get_locker():
 
 @app.route('/updateBooking/<int:bookingID>', methods=['PUT'])
 def update_booking(bookingID):
+    print('update_booking')
     booking = Booking.query.get(bookingID)
-    booking.timeout = datetime.datetime.now()
-    db.session.commit()
-    return jsonify(booking.serialize())
+
+    # check if the booking ID is in DB
+    booking = Booking.query.filter_by(bookingID=bookingID).first()
+    if booking is None:
+        return ('Booking ID {} does not exist'.format(bookingID))
+
+    else:
+        booking.timeout = datetime.datetime.now()
+        db.session.commit()
+        print('Your booking details have been updated successfully.')
+        return jsonify(booking.serialize())
 
 @app.route('/updateLocker/<lockerName>', methods=['PUT'])
 def update_locker(lockerName):
+    print(update_locker)
     new_lockerAvailability = request.json['lockerAvailability']
     locker = Locker.query.get(lockerName)
-    locker.lockerAvailability = new_lockerAvailability
-    db.session.commit()
-    return jsonify(locker.serialize())
-    
+
+    errors = {}
+    try:
+        if (new_lockerAvailability != "Yes") or (new_lockerAvailability != "No"):
+            errors['Availability Error']= "Please key in a valid availability string 'Yes' or 'No'"
+        
+        #name error - 
+
+        else:
+            locker.lockerAvailability = new_lockerAvailability
+            db.session.commit()
+            print("Your locker details have been updated successfully.")
+            return jsonify(locker.serialize())
+        
+        return errors
+
+    except Exception as e:
+		return (str(e))	
+
 # your code ends here 
 
 if __name__ == '__main__':
