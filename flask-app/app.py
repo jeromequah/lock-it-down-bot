@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.debug = True
 
 # Step 03: add database configurations here
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://broskiuser:password@localhost:5432/broskidb" 
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://projectuser:password@localhost:5432/projectdb" 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -19,18 +19,19 @@ db = SQLAlchemy(app)
 from models import Student, Booking, Locker
 
 # Step 05: add routes and their binded functions here
-valid_Schools = ['SIS', 'SOB', 'SOA','SOL','SOE']
-valid_Sizes = ['S', 'M', 'L'] 
+valid_Schools = ['SIS', 'SOA', 'SOE/SOSS','LKCSB','SOL']
 valid_Levels = ['2','3']
 valid_Numbers = [str(i) for i in range(1,51)]
+valid_Sizes = ['S', 'M', 'L'] 
 
 
 @app.route('/postLocker/', methods=['POST'])
 def postLocker():
-	lockerSize = request.json['lockerSize']
+
 	lockerSchool = request.json['lockerSchool']
 	lockerLevel = request.json['lockerLevel']
 	lockerNumber = request.json['lockerNumber']
+	lockerSize = request.json['lockerSize']
 	lockerAvailability = 'Yes'
 	errors = {}
 
@@ -41,25 +42,31 @@ def postLocker():
 		if (lockerLevel.isdigit() == False) or (lockerLevel not in valid_Levels):        
 			errors['Level Error'] = '{} is an invalid level. Please enter a valid level.'.format(lockerLevel)
 		
-		if lockerSize not in valid_Sizes:
-			errors['Size Error'] = '{} is an invalid size. Please enter a valid size.'.format(lockerSize)
-
 		if (lockerNumber.isdigit() == False) or (lockerNumber not in valid_Numbers):
 			errors['Number Error'] = '{} is an invalid locker number. Please enter a valid locker number between 1 to 50.'.format(lockerNumber)
+
+		if lockerSize not in valid_Sizes:
+			errors['Size Error'] = '{} is an invalid size. Please enter a valid size.'.format(lockerSize)
 
 		if len(errors) >= 1:
 			return jsonify(errors)
 	
 		else:
 			lockerName = lockerSchool + '-' + 'L' + lockerLevel + '-' + lockerNumber		
-			new_locker = Locker(lockerName=lockerName, lockerSize=lockerSize, lockerSchool= lockerSchool, lockerLevel=lockerLevel, lockerNumber = lockerNumber, lockerAvailability = lockerAvailability)
-			db.session.add(new_locker)
-			db.session.commit()
-			print("Your booking details have been posted successfully.")
-			return jsonify('{} was created'.format(new_locker))
+			
+			# check if locker already exists in database
+			locker = Locker.query.filter_by(lockerName=lockerName).first()  
+			if locker is None:
+				new_locker = Locker(lockerName=lockerName, lockerSize=lockerSize, lockerSchool= lockerSchool, lockerLevel=lockerLevel, lockerNumber = lockerNumber, lockerAvailability = lockerAvailability)
+				db.session.add(new_locker)
+				db.session.commit()
+				print("Your booking details have been posted successfully.")
+				return jsonify('{} was created'.format(new_locker))
+			else: 
+				return jsonify('{} already exists in database. Please review locker details (i.e. school, level, number) and try again.'.format(lockerName))
 	
 	except Exception as e:
-		return (str(e))
+		return (str(e)) 
 
 @app.route('/postBooking/', methods=['POST'])
 def postBooking():
@@ -126,6 +133,7 @@ def getLocker():
 		if 'lockerSchool' in request.args and 'lockerSize' in request.args: 
 			lockerSchool = str(request.args.get('lockerSchool'))
 			lockerSize = str(request.args.get('lockerSize'))
+			
 			if lockerSchool.upper() not in valid_Schools:   
 				errors['School Error'] = '{} is an invalid school. Please enter a valid school.'.format(lockerSchool)
 			
