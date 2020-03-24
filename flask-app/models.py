@@ -67,11 +67,12 @@ class Locker(db.Model):
 		self.lockerAvailability = lockerAvailability
 		self.booking_info = []
 
-	# def __repr__(self):
-	# 	return '<locker name {}>'.format(self.)
+	def __repr__(self):
+		return '<locker name {}>'.format(self.lockerName)
 
 	def serialize(self):
 		return { 
+				'locker name': self.lockerName, 
 				'locker school': self.lockerSchool, 
 				'locker level': self.lockerLevel,
 				'locker number': self.lockerNumber,
