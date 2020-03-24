@@ -3,7 +3,7 @@ from app import db
 
 class Student(db.Model):
 	__tablename__ = 'student'
-	matric= db.Column(db.String(8), primary_key=True)
+	matric= db.Column(db.String, primary_key=True)
 
 #one to many
 	student_booking = db.relationship('Booking', back_populates='student_info', uselist=True, cascade='all, delete-orphan', lazy=True)
@@ -21,10 +21,10 @@ class Student(db.Model):
 class Booking(db.Model):
 	__tablename__ = 'booking'
 	bookingID = db.Column(db.Integer, primary_key=True)
-	matric = db.Column(db.String(8), db.ForeignKey('student.matric'), nullable=False)
-	lockerName = db.Column(db.String(80), db.ForeignKey('locker.lockerName'), nullable=False)
 	timein = db.Column(db.DateTime,default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 	timeout = db.Column(db.DateTime,default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+	matric = db.Column(db.String, db.ForeignKey('student.matric'), nullable=False)
+	lockerName = db.Column(db.String(80), db.ForeignKey('locker.lockerName'), nullable=False)
 
 #one to many
 	student_info = db.relationship('Student', back_populates='student_booking')
@@ -41,7 +41,6 @@ class Booking(db.Model):
 		return {
 			'booking id': self.bookingID, 
 			'matric': self.matric,  
-			'lockerName': self.lockerName, 
 			'time in': self.timein,
 			'time out': [] if self.timeout == None else self.timeout #KIV-Ask Prof
 			}
@@ -49,21 +48,21 @@ class Booking(db.Model):
 class Locker(db.Model):
 	__tablename__ = 'locker'
 	lockerName = db.Column(db.String(20), primary_key=True)
+	lockerSize = db.Column(db.String(20), unique=False, nullable=False)
 	lockerSchool = db.Column(db.String(20), unique=False, nullable=False)
 	lockerLevel = db.Column(db.String(20), unique=False, nullable=False)
 	lockerNumber = db.Column(db.String(2), unique=False, nullable=False)
-	lockerSize = db.Column(db.String(20), unique=False, nullable=False)
 	lockerAvailability = db.Column(db.String(20), unique=False, nullable=False)
 
  #one to many
 	booking_info = db.relationship('Booking', back_populates='locker_info', uselist=True, cascade='all, delete-orphan', lazy=True)
 
-	def __init__(self, lockerName, lockerSchool, lockerLevel, lockerNumber, lockerSize, lockerAvailability, booking_info=None):
+	def __init__(self, lockerName, lockerSize, lockerSchool, lockerLevel, lockerNumber, lockerAvailability, booking_info=None):
 		self.lockerName = lockerName
+		self.lockerSize = lockerSize
 		self.lockerSchool = lockerSchool
 		self.lockerLevel = lockerLevel
 		self.lockerNumber = lockerNumber
-		self.lockerSize = lockerSize
 		self.lockerAvailability = lockerAvailability
 		self.booking_info = []
 
@@ -73,7 +72,7 @@ class Locker(db.Model):
 	def serialize(self):
 		return { 
 				'locker school': self.lockerSchool, 
+				'locker size': self.lockerSize,
 				'locker level': self.lockerLevel,
 				'locker number': self.lockerNumber,
-				'locker size': self.lockerSize,
 				'locker availability': self.lockerAvailability} 
