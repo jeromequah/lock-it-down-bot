@@ -10,7 +10,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-my_token = '1021081111:AAEe7HbsD4tRE9RrndctArLggjH1Z-6IPiU'
+my_token = 'insert lockitdown telebot token here' 
 
 # Flow of Conversation
 MATRIC_VALIDITY, FILTER_LOCATION, FILTER_SIZE, AVAIL_LOCKER, BOOKING_START, DOUBLE_CHECK, BOOKING_END = range(7) 
@@ -26,10 +26,7 @@ base_url = 'http://127.0.0.1:5000/'
 def start(update, context): 
 
 	context.bot.send_message(chat_id=update.effective_chat.id, 
-							text='Hello Student! \n \n'
-							'Heard you need a locker! Our locker rates are at $0.03/hour. '
-							'You can request a locker by your desired location and locker size. \n \n'
-							'Before we begin, please enter your SMU Matriculation Number: ')
+							text='Please enter your SMU Matriculation Number:')
 
 	return MATRIC_VALIDITY
 
