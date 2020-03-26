@@ -23,8 +23,8 @@ class Booking(db.Model):
 	bookingID = db.Column(db.Integer, primary_key=True)
 	matric = db.Column(db.String(8), db.ForeignKey('student.matric'), nullable=False)
 	lockerName = db.Column(db.String(80), db.ForeignKey('locker.lockerName'), nullable=False)
-	timein = db.Column(db.DateTime,default=datetime.datetime.utcnow)
-	timeout =  db.Column()
+	timein = db.Column(db.DateTime,default=datetime.datetime.now)
+	timeout =  db.Column(db.DateTime)
 
 #one to many
 	student_info = db.relationship('Student', back_populates='student_booking')
