@@ -98,7 +98,6 @@ def avail_locker(update, context):
 
 	for locker in r.json():
 		reply_keyboard.append([locker['locker name']])
-	reply_keyboard.append(['/cancel']) 
 
 	update.message.reply_text('Select Locker To Confirm Booking:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
@@ -131,7 +130,7 @@ def booking_start(update, context):
 	r = requests.put(updateLocker_url, json=params)
 
 	reply_keyboard = [['I want my things out!']] 
-	update.message.reply_text("Done! Please head to your locker at: {} (School-Level-Number). \n \n Please select 'I want my things out!' when you'd like to retrieve your items and end your booking session.".format(user_info['selected locker']), reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)) 
+	update.message.reply_text("Done! Please head to your locker at: {} (School-Level-Number). \n \nPlease select the 'I want my things out!' option if you'd like to retrieve your items and end your session.".format(user_info['selected locker']), reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)) 
 
 	return DOUBLE_CHECK
 
