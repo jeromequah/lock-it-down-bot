@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.debug = True
 
 # Step 03: add database configurations here
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://projectuser:password@localhost:5432/projectdb" 
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://projectuser:smt203proj@localhost:5432/projectdb" 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -61,7 +61,7 @@ def postLocker():
 				db.session.add(new_locker)
 				db.session.commit()
 				print("Your booking details have been posted successfully.")
-				return jsonify('{} was created'.format(new_locker))
+				return jsonify(new_locker.serialize())
 			else: 
 				return jsonify('{} already exists in database. Please review locker details (i.e. school, level, number) and try again.'.format(lockerName))
 	
@@ -95,12 +95,12 @@ def postBooking():
 				new_booking = Booking(matric=matric, lockerName=lockerName)
 				db.session.add(new_booking)
 				db.session.commit()
-				return jsonify('{} was created'.format(new_booking))
+				return jsonify(new_booking.serialize())
 			else:
 				new_booking = Booking(matric=matric, lockerName=lockerName)
 				db.session.add(new_booking)
 				db.session.commit()
-				return jsonify('{} was created'.format(new_booking))
+				return jsonify(new_booking.serialize())
 
 	except Exception as e:
 		return (str(e))
