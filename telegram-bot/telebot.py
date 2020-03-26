@@ -3,151 +3,226 @@ import logging # to inform when and why things don't work as expected
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler, MessageHandler, Filters
 
-import string
-import re
+import string, re, requests, json
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+					level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-my_token = 'insert token here'
+my_token = '1021081111:AAEe7HbsD4tRE9RrndctArLggjH1Z-6IPiU'
 
 # Flow of Conversation
-MATRIC_VALIDITY, FILTER_LOCATION, FILTER_SIZE, AVAIL_LOCKER, BOOKING_CONFIRMED = range(5) 
+MATRIC_VALIDITY, FILTER_LOCATION, FILTER_SIZE, AVAIL_LOCKER, BOOKING_START, DOUBLE_CHECK, BOOKING_END = range(7) 
 
-# Store user info in temp dictionary for referencing 
-user_info = {} 
+user_info = {} # Store user info in temp dictionary for referencing 
+
+booking_id = "" 
+
+base_url = 'http://127.0.0.1:5000/'
 
 
 # Start - Introduction to Lock-It-Down Bot & User inputs Matriculation Number 
 def start(update, context): 
 
-    context.bot.send_message(chat_id=update.effective_chat.id, 
-                            text='Hello Student! \n \n'
-                            'Heard you need a locker! Our locker rates are at $0.03/hour. '
-                            'You can request a locker by your desired location and locker size. \n \n'
-                            'Before we begin, please enter your SMU Matriculation Number: ')
+	context.bot.send_message(chat_id=update.effective_chat.id, 
+							text='Hello Student! \n \n'
+							'Heard you need a locker! Our locker rates are at $0.03/hour. '
+							'You can request a locker by your desired location and locker size. \n \n'
+							'Before we begin, please enter your SMU Matriculation Number: ')
 
-    return MATRIC_VALIDITY
+	return MATRIC_VALIDITY
+
 
 def integer_validity(text):
-    regex = re.compile('[@_!#$%^&*()<>?/\|}{~:]') 
-    if text.isdigit():
-        return True
+	regex = re.compile('[@_!#$%^&*()<>?/\|}{~:]') 
+	if text.isdigit():
+		return True
+
 
 # Check for validity of Matriculation Number (8 characters)
 def matric_validity(update, context):
 
-    matric_id = update.message.text
-    user_info['matric id'] = matric_id
+	matric = update.message.text
 
-    if len(str(matric_id)) == 8 and integer_validity(matric_id) == True: #matric id must be an integer of length 8 and must start with '01xxxxxx'
-        reply_keyboard = [['YES']]
-        update.message.reply_text("Alright! Select 'YES' to start your booking. \n \n"
-                                  "Note: You may type /cancel at any time to terminate your session.", reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+	if len(str(matric)) == 8 and integer_validity(matric) == True: #matric id must be an integer of length 8 and must start with '01xxxxxx'
+		user_info['matric'] = matric
+		reply_keyboard = [['YES']]
+		update.message.reply_text("Alright! Select 'YES' to start your booking. \n \n"
+								  "Note: You may type /cancel at any time to terminate your session.", reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+		return FILTER_LOCATION 
 
-        return FILTER_LOCATION 
+	elif matric == '/cancel': # Not sure whether need this here but I just put first 
+		return cancel(update, context)
 
-    else:
-        update.message.reply_text('You have not entered a valid input! \nPlease try again!')
+	else:
+		update.message.reply_text('You have not entered a valid input! \nPlease try again!')     
 
 
 # Select Filter Location 
 def filter_location(update, context):
 
-    reply_keyboard = [['LKCSB', 'SOA', 'SOE'], ['SOL', 'SIS']]
-    update.message.reply_text('Select Locker Location:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+	reply_keyboard = [['LKCSB', 'SOA', 'SOE/SOSS'], ['SOL', 'SIS']]
+	update.message.reply_text('Select Locker Location:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
-    return FILTER_SIZE 
+	return FILTER_SIZE 
 
 
 # Select Filter Locker Size 
 def filter_size(update, context):
 
-    location = update.message.text
-    user_info['location'] = location
+	location = update.message.text
+	user_info['location'] = location
 
-    reply_keyboard = [['S'], ['M'], ['L']]
-    update.message.reply_text('Select Locker Size:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+	reply_keyboard = [['S'], ['M'], ['L']]
+	update.message.reply_text('Select Locker Size:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
-    return AVAIL_LOCKER 
+	return AVAIL_LOCKER 
 
 
 # Select From Available Lockers
-## temporary dummy values, need GET request to pull available lockers from database, based on user's filter requests. ##
+
 def avail_locker(update, context):
 
-    size = update.message.text
-    user_info['locker size'] = size
+	size = update.message.text
+	user_info['locker size'] = size
 
-    reply_keyboard = [['SIS-L1-01'], ['SIS-L1-05'], ['SIS-L2-11'], ['SIS-L3-01'], ['SIS-L3-12'], ['SIS-L3-33']] 
-    update.message.reply_text('Select Locker To Confirm Booking:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+	# Send API request to Flask App (getLocker) to pull available lockers from database, based on user's filtered request.
+	params = {'lockerSchool': user_info['location'], 'lockerSize': user_info['locker size']}
 
-    return BOOKING_CONFIRMED
+	getLocker_url = base_url + 'getLocker/'
+	r = requests.get(getLocker_url, params=params)
+
+	# print(r.url) 
+	# print(r.status_code)
+
+	# Sort API response into reply_keyboard
+	reply_keyboard = [] 
+
+	for locker in r.json():
+		reply_keyboard.append([locker['locker name']])
+	reply_keyboard.append(['/cancel']) 
+
+	update.message.reply_text('Select Locker To Confirm Booking:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+
+	return BOOKING_START
 
 
-def booking_confirmed(update, context): 
+def booking_start(update, context): 
 
-    selected = update.message.text
-    user_info['selected locker'] = selected
+	if update.message.text == '/cancel': # Not sure whether need this here but I just put first 
+		return cancel(update, context)
+	else:
+		user_info['selected locker'] = update.message.text
 
-    update.message.reply_text('Done! Please head to {}'.format(user_info['selected locker'])) 
 
-    print(user_info)
+	print(user_info)
 
-    return ConversationHandler.END 
+	# Send API request to Flask App (postBooking) to post booking details to database.
+	params = {'matric': user_info['matric'], 'lockerName': user_info['selected locker']}
+
+	postBooking_url = base_url + 'postBooking/' 
+	r = requests.post(postBooking_url, json=params)
+
+	# Get booking id and store as global variable
+	booking_id = r.json()['booking id']
+
+	# Send API request to Flask App (updateLocker) to update locker availability to No.
+	params = {'lockerName': user_info['selected locker'], 'lockerAvailability': 'No'}
+
+	updateLocker_url = base_url + 'updateLocker/' + user_info['selected locker']
+	r = requests.put(updateLocker_url, json=params)
+
+	reply_keyboard = [['I want my things out!']] 
+	update.message.reply_text("Done! Please head to your locker at: {} (School-Level-Number). \n \n Please select 'I want my things out!' when you'd like to retrieve your items and end your booking session.".format(user_info['selected locker']), reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)) 
+
+	return DOUBLE_CHECK
+
+
+def double_check(update, context): 
+
+	reply_keyboard = [['Yes please!']] 
+
+	update.message.reply_text('Do you really want to retrieve your items now?', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
+
+	return BOOKING_END
+
+
+def booking_end(update, context): 
+
+	# Send API request to Flask App (updateBooking) to update booking
+	updateBooking_url = base_url + 'updateBooking/' + booking_id 
+
+	params = {'bookingID': booking_id} 
+	r = requests.put(updateBooking_url, json=params)
+
+	
+
+	# Send API request to Flask App (updateLocker) to update locker availability to Yes.
+	params = {'lockerName': user_info['selected locker'], 'lockerAvailability': 'Yes'}
+
+	updateLocker_url = base_url + 'updateLocker/' + user_info['selected locker']
+	r = requests.put(updateLocker_url, json=params)
+
+	update.message.reply_text('Thank you for using Lock-It-Down! \n \n'
+							'Enter /start again to begin a new booking session whenever you need a locker :D.')
+
+	return ConversationHandler.END 
 
 
 def cancel(update, context): 
-    user = update.message.from_user
-    logger.info("User %s canceled the conversation.", user.first_name)
-    update.message.reply_text("Your session has been terminated. Please type /start to begin a new one.", reply_markup=ReplyKeyboardRemove())
+	user = update.message.from_user
+	logger.info("User %s canceled the conversation.", user.first_name)
+	update.message.reply_text("Your session has been terminated. Please type /start to begin a new one.", reply_markup=ReplyKeyboardRemove())
 
-    return ConversationHandler.END
+	return ConversationHandler.END
 
 
 def error(update, context):
-    """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+	"""Log Errors caused by Updates."""
+	logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 
 def main():
-    updater = Updater(my_token, use_context=True)
+	updater = Updater(my_token, use_context=True)
 
-    dp = updater.dispatcher
+	dp = updater.dispatcher
 
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+	conv_handler = ConversationHandler(
+		entry_points=[CommandHandler('start', start)],
 
-        states={
+		states={
 
-            MATRIC_VALIDITY: [MessageHandler(Filters.text, matric_validity)], # must receive text(matric id) first
+			MATRIC_VALIDITY: [MessageHandler(Filters.text, matric_validity)], # must receive text(matric id) first
 
-            FILTER_LOCATION: [MessageHandler(Filters.regex('^(YES)$'), filter_location)], # must receive YES 
+			FILTER_LOCATION: [MessageHandler(Filters.regex('^(YES)$'), filter_location)], # must receive YES 
 
-            FILTER_SIZE: [MessageHandler(Filters.regex('^(LKCSB|SOA|SOE|SOL|SIS)$'), filter_size)], # must receive locker location first
+			FILTER_SIZE: [MessageHandler(Filters.regex('^(LKCSB|SOA|SOE|SOL|SIS)$'), filter_size)], # must receive locker location first
 
-            AVAIL_LOCKER: [MessageHandler(Filters.regex('^(S|M|L)$'), avail_locker)], # must receive locker size first
+			AVAIL_LOCKER: [MessageHandler(Filters.regex('^(S|M|L)$'), avail_locker)], # must receive locker size first
 
-            BOOKING_CONFIRMED: [MessageHandler(Filters.text, booking_confirmed)] # (!!!) Need to change filter to accept locker xxx-xx-xx only 
+			BOOKING_START: [MessageHandler(Filters.text, booking_start)], # (!!!) might need to change filter to accept locker xxx-xx-xx only 
 
-        },
+			DOUBLE_CHECK: [MessageHandler(Filters.regex('^(I want my things out!)$'), double_check)], # must receive 'I want my things out!'
 
-        fallbacks=[CommandHandler('cancel', cancel)]
-    )
+			BOOKING_END: [MessageHandler(Filters.regex('^(Yes please!)$'), booking_end)], # must receive 'Yes please!'
 
-    dp.add_handler(conv_handler)
-    dp.add_error_handler(error)
+		},
+
+		fallbacks=[CommandHandler('cancel', cancel)]
+	)
+
+	dp.add_handler(conv_handler)
+	dp.add_error_handler(error)
 
 
-    # Start the Bot
-    updater.start_polling()
+	# Start the Bot
+	updater.start_polling()
 
-    # Run the bot until the user presses Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT
-    updater.idle()
+	# Run the bot until the user presses Ctrl-C or the process receives SIGINT,
+	# SIGTERM or SIGABRT
+	updater.idle()
 
 
 if __name__ == '__main__':
-    main()
+	main()
