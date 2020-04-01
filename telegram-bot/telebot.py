@@ -10,7 +10,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-my_token = 'insert telebot token here'
+my_token = 'insert lockitdown telebot token here' 
 
 # Flow of Conversation
 MATRIC_VALIDITY, FILTER_LOCATION, FILTER_SIZE, AVAIL_LOCKER, BOOKING_START, DOUBLE_CHECK, BOOKING_END = range(7) 
@@ -116,17 +116,17 @@ def booking_start(update, context):
 
 	# Send API request to Flask App (postBooking) to post booking details to database.
 	params = {'matric': user_info['matric'], 'lockerName': user_info['selected locker']}
+
 	postBooking_url = base_url + 'postBooking/' 
-	
 	r = requests.post(postBooking_url, json=params)
 
 	# Get booking id and store as global variable
 	booking_id = r.json()['booking id']
 
 	# Send API request to Flask App (updateLocker) to update locker availability to No.
-	params = {'lockerAvailability': 'No'}
+	params = {'lockerName': user_info['selected locker'], 'lockerAvailability': 'No'}
+
 	updateLocker_url = base_url + 'updateLocker/' + user_info['selected locker']
-	
 	r = requests.put(updateLocker_url, json=params)
 
 	reply_keyboard = [['I want my things out!']] 
@@ -149,14 +149,15 @@ def booking_end(update, context):
 	# Send API request to Flask App (updateBooking) to update booking
 	updateBooking_url = base_url + 'updateBooking/' + booking_id 
 
-	r = requests.put(updateBooking_url) 
+	params = {'bookingID': booking_id} 
+	r = requests.put(updateBooking_url, json=params)
 
 	
 
 	# Send API request to Flask App (updateLocker) to update locker availability to Yes.
-	params = {'lockerAvailability': 'Yes'}
-	updateLocker_url = base_url + 'updateLocker/' + user_info['selected locker']
+	params = {'lockerName': user_info['selected locker'], 'lockerAvailability': 'Yes'}
 
+	updateLocker_url = base_url + 'updateLocker/' + user_info['selected locker']
 	r = requests.put(updateLocker_url, json=params)
 
 	update.message.reply_text('Thank you for using Lock-It-Down! \n \n'
