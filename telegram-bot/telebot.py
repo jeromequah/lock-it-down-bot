@@ -10,16 +10,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-my_token = '''insert your token here!'''
+my_token = ''
 
 # Flow of Conversation
 MATRIC_VALIDITY, FILTER_LOCATION, FILTER_SIZE, AVAIL_LOCKER, BOOKING_START, DOUBLE_CHECK, BOOKING_END = range(7) 
 
 user_info = {} # Store user info in temp dictionary for referencing 
 
-booking_id = "" 
-
-base_url = 'http://127.0.0.1:5000/'
+base_url = 'https://lockitdownapp.herokuapp.com/'
 
 
 # Start - Introduction to Lock-It-Down Bot & User inputs Matriculation Number 
@@ -90,8 +88,6 @@ def avail_locker(update, context):
 	getLocker_url = base_url + 'getLocker/'
 	r = requests.get(getLocker_url, params=params)
 
-	# print(r.url) 
-	# print(r.status_code)
 
 	# Sort API response into reply_keyboard
 	reply_keyboard = [] 
@@ -112,8 +108,6 @@ def booking_start(update, context):
 		user_info['selected locker'] = update.message.text
 
 
-	print(user_info)
-
 	# Send API request to Flask App (postBooking) to post booking details to database.
 	params = {'matric': user_info['matric'], 'lockerName': user_info['selected locker']}
 	postBooking_url = base_url + 'postBooking/' 
@@ -121,7 +115,8 @@ def booking_start(update, context):
 	r = requests.post(postBooking_url, json=params)
 
 	# Get booking id and store as global variable
-	booking_id = r.json()['booking id']
+	user_info['booking id'] = r.json()['booking id']
+	print(user_info)
 
 	# Send API request to Flask App (updateLocker) to update locker availability to No.
 	params = {'lockerAvailability': 'No'}
@@ -147,7 +142,7 @@ def double_check(update, context):
 def booking_end(update, context): 
 
 	# Send API request to Flask App (updateBooking) to update booking
-	updateBooking_url = base_url + 'updateBooking/' + booking_id 
+	updateBooking_url = base_url + 'updateBooking/' + str(user_info['booking id']) 
 
 	r = requests.put(updateBooking_url) 
 
