@@ -57,7 +57,7 @@ def matric_validity(update, context):
 # Select Filter Location 
 def filter_location(update, context):
 
-	reply_keyboard = [['LKCSB', 'SOA', 'SOE/SOSS'], ['SOL', 'SIS']]
+	reply_keyboard = [['LKCSB', 'SOA', 'SOE'], ['SOL', 'SIS']]
 	update.message.reply_text('Select Locker Location:', reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True))
 
 	return FILTER_SIZE 
@@ -187,7 +187,7 @@ def main():
 
 			FILTER_LOCATION: [MessageHandler(Filters.regex('^(YES)$'), filter_location)], # must receive YES 
 
-			FILTER_SIZE: [MessageHandler(Filters.regex('^(LKCSB|SOA|SOE/SOSS|SOL|SIS)$'), filter_size)], # must receive locker location first
+			FILTER_SIZE: [MessageHandler(Filters.regex('^(LKCSB|SOA|SOE|SOL|SIS)$'), filter_size)], # must receive locker location first
 
 			AVAIL_LOCKER: [MessageHandler(Filters.regex('^(S|M|L)$'), avail_locker)], # must receive locker size first
 
