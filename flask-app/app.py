@@ -1,8 +1,9 @@
 # Step 01: import necessary libraries/modules
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import and_
 import datetime
+import os 
 
 # your code begins here 
 
@@ -11,7 +12,8 @@ app = Flask(__name__)
 app.debug = True
 
 # Step 03: add database configurations here
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://projectuser:smt203proj@localhost:5432/projectdb" 
+# app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://projectuser:smt203proj@localhost:5432/projectdb" 
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -19,11 +21,14 @@ db = SQLAlchemy(app)
 from models import Student, Booking, Locker
 
 # Step 05: add routes and their binded functions here
-valid_Schools = ['SIS', 'SOA', 'SOE/SOSS','LKCSB','SOL']
+valid_Schools = ['SIS', 'SOA', 'SOE','LKCSB','SOL']
 valid_Levels = ['2','3']
 valid_Numbers = [str(i) for i in range(1,51)]
 valid_Sizes = ['S', 'M', 'L'] 
 
+@app.route('/')
+def index():
+	return render_template("index.html")
 
 @app.route('/postLocker/', methods=['POST'])
 def postLocker():
@@ -121,6 +126,9 @@ def getBooking():
 					return jsonify(errors)
 				else:
 					return jsonify(booking.serialize())
+		else:
+			getBooking = Booking.query.all()
+			return jsonify([b.serialize() for b in getBooking])
 	except Exception as e:
 		return (str(e))
 
@@ -171,21 +179,44 @@ def getLocker():
 		
 	except Exception as e:
 		return (str(e))
+
+@app.route('/getLockerAvailability/', methods = ['GET'])
+def getLockerAvailability():
+	try:
+		checker = []
+		getLocker = Locker.query.all()
+		print(getLocker)
+
+		for locker in getLocker:
+			print(locker.lockerAvailability)
+
+			if locker.lockerAvailability == 'No':
+				return str(1)
+
+		return str(0)
+
+	except Exception as e:
+		return (str(e))
 	 
 @app.route('/updateBooking/<int:bookingID>', methods=['PUT'])
 def updateBooking(bookingID):
 	booking = Booking.query.get(bookingID)
 	errors = {}
-	if booking is None:
-		errors['BookingID Error'] = 'Booking ID {} does not exist. Please try again.'.format(bookingID)
-		return jsonify(errors)
 	
-	else:
-		booking = Booking.query.filter_by(bookingID=bookingID).first()
-		booking.timeout = datetime.datetime.now() 
-		db.session.commit()
-		print('Your booking details have been updated successfully.')
-		return jsonify(booking.serialize())
+	try:
+		if booking is None:
+			errors['BookingID Error'] = 'Booking ID {} does not exist. Please try again.'.format(bookingID)
+			return jsonify(errors)
+		
+		else:
+			booking = Booking.query.filter_by(bookingID=bookingID).first()
+			booking.timeout = datetime.datetime.now() 
+			db.session.commit()
+			print('Your booking details have been updated successfully.')
+			return jsonify(booking.serialize())
+
+	except Exception as e:
+		return (str(e))
 
 @app.route('/updateLocker/<lockerName>', methods=['PUT'])
 def updateLocker(lockerName):
